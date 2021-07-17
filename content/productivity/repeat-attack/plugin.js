@@ -1,6 +1,15 @@
-import {Manager} from "https://plugins.zkga.me/utils/RepeatAttackCore.js";
+// Repeat Attack
+//
+// Setup and manage your repeat attacks.
+// Potential Uses:
+// - Keep your big planets topped up with energy
+// - Take a large pirate owned planet overtime
+// - Mitigate a large enemy planet's energy growth during a siege
+
+
+import { Manager } from "https://plugins.zkga.me/utils/RepeatAttackCore.js";
 import figures from 'https://cdn.skypack.dev/figures';
-import {html, render, useState, useLayoutEffect } from 
+import { html, render, useState, useLayoutEffect } from
   "https://unpkg.com/htm/preact/standalone.module.js";
 
 
@@ -111,7 +120,7 @@ function AttackList() {
   const [actions, setActions] = useState(op.actions);
 
   let actionList = {
-    maxHeight: "70px",
+    maxHeight: "50vh",
     overflowX: "hidden",
     overflowY: "scroll",
   };

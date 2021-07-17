@@ -1,9 +1,26 @@
-import {
-  move
-} from 'https://plugins.zkga.me/utils/queued-move.js';
+// Crawl Planets
+//
+// Capture unowned planets around you!
+
+const planetTypes = {
+  'Planet': 0,
+  'Asteroid': 1,
+  'Foundry': 2,
+  'Spacetime Rip': 3,
+  'Quasar': 4,
+};
+
+const planetLevels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+const players = [
+  "0x0000000000000000000000000000000000000000",
+];
+
+const typeNames = Object.keys(planetTypes);
 
 class Plugin {
   constructor() {
+    this.planetType = 1;
     this.minPlanetLevel = 3;
     this.maxEnergyPercent = 85;
   }
@@ -37,7 +54,7 @@ class Plugin {
     }
 
     let levelLabel = document.createElement('label');
-    levelLabel.innerText = 'Min. planets to capture';
+    levelLabel.innerText = 'Min. level to capture';
     levelLabel.style.display = 'block';
 
     let level = document.createElement('select');
@@ -45,7 +62,7 @@ class Plugin {
     level.style.width = '100%';
     level.style.marginTop = '10px';
     level.style.marginBottom = '10px';
-    [0, 1, 2, 3, 4, 5, 6, 7].forEach(lvl => {
+    planetLevels.forEach(lvl => {
       let opt = document.createElement('option');
       opt.value = `${lvl}`;
       opt.innerText = `Level ${lvl}`;
@@ -55,9 +72,34 @@ class Plugin {
 
     level.onchange = (evt) => {
       try {
-        this.minPlanetLevel = parseInt(evt.target.value);
+        this.minPlanetLevel = parseInt(evt.target.value, 10);
       } catch (e) {
         console.error('could not parse planet level', e);
+      }
+    }
+
+    let planetTypeLabel = document.createElement('label');
+    planetTypeLabel.innerText = 'Planet type to capture';
+    planetTypeLabel.style.display = 'block';
+
+    let planetType = document.createElement('select');
+    planetType.style.background = 'rgb(8,8,8)';
+    planetType.style.width = '100%';
+    planetType.style.marginTop = '10px';
+    planetType.style.marginBottom = '10px';
+    Object.entries(planetTypes).forEach(([name, key]) => {
+      let opt = document.createElement('option');
+      opt.value = `${key}`;
+      opt.innerText = `${name}`;
+      planetType.appendChild(opt);
+    });
+    planetType.value = `${this.planetType}`;
+
+    planetType.onchange = (evt) => {
+      try {
+        this.planetType = parseInt(evt.target.value, 10);
+      } catch (e) {
+        console.error('could not parse planet planet type', e);
       }
     }
 
@@ -75,8 +117,9 @@ class Plugin {
           planet.locationId,
           this.minPlanetLevel,
           this.maxEnergyPercent,
+          this.planetType,
         );
-        message.innerText = `Crawling ${moves} planets.`;
+        message.innerText = `Crawling ${moves} ${typeNames[this.planetType]}s.`;
       } else {
         message.innerText = 'No planet selected.';
       }
@@ -96,8 +139,9 @@ class Plugin {
             planet.locationId,
             this.minPlanetLevel,
             this.maxEnergyPercent,
+            this.planetType,
           );
-          message.innerText = `Crawling ${moves} planets.`;
+          message.innerText = `Crawling ${moves} ${typeNames[this.planetType]}s.`;
         }, 0);
       }
     }
@@ -107,6 +151,8 @@ class Plugin {
     container.appendChild(percent);
     container.appendChild(levelLabel);
     container.appendChild(level);
+    container.appendChild(planetTypeLabel);
+    container.appendChild(planetType);
     container.appendChild(button);
     container.appendChild(globalButton);
     container.appendChild(message);
@@ -116,21 +162,22 @@ class Plugin {
 export default Plugin;
 
 
-function capturePlanets(fromId, minCaptureLevel, maxDistributeEnergyPercent) {
+function capturePlanets(fromId, minCaptureLevel, maxDistributeEnergyPercent, planetType) {
   const planet = df.getPlanetWithId(fromId);
   const from = df.getPlanetWithId(fromId);
 
   // Rejected if has pending outbound moves
   const unconfirmed = df.getUnconfirmedMoves().filter(move => move.from === fromId)
   if (unconfirmed.length !== 0) {
-    return;
+    return 0;
   }
 
   const candidates_ = df.getPlanetsInRange(fromId, maxDistributeEnergyPercent)
     .filter(p => (
       p.owner !== df.account &&
-      p.owner === "0x0000000000000000000000000000000000000000" &&
-      p.planetLevel >= minCaptureLevel
+      players.includes(p.owner) &&
+      p.planetLevel >= minCaptureLevel &&
+      p.planetType === planetType
     ))
     .map(to => {
       return [to, distance(from, to)]
@@ -168,7 +215,7 @@ function capturePlanets(fromId, minCaptureLevel, maxDistributeEnergyPercent) {
       continue;
     }
 
-    move(fromId, candidate.locationId, energyNeeded, 0);
+    df.move(fromId, candidate.locationId, energyNeeded, 0);
     energySpent += energyNeeded;
     moves += 1;
   }
